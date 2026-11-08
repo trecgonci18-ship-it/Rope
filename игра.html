@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>Rope Physics</title>
+<style>
+*{
+ margin:0;
+ padding:0;
+ box-sizing:border-box;
+ -webkit-tap-highlight-color:transparent;
+}
+html,body{
+ width:100%;
+ height:100%;
+ overflow:hidden;
+ background:#080d32;
+ touch-action:none;
+ font-family:Arial,sans-serif;
+ color:white;
+}
+canvas{
+ position:absolute;
+ inset:0;
+ width:100%;
+ height:100%;
+ touch-action:none;
+}
+button{
+ border:1px solid #5267c9;
+ background:#19245d;
+ color:white;
+ border-radius:13px;
+ padding:13px 20px;
+ font-size:16px;
+ cursor:pointer;
+}
+.screen{
+ position:absolute;
+ inset:0;
+ z-index:10;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ background:#000;
+}
+.menuBox{
+ width:85%;
+ max-width:350px;
+ text-align:center;
+}
+.logo{
+ font-size:27px;
+ font-weight:bold;
+ letter-spacing:3px;
+ margin-bottom:10px;
+ color:white;
+}
+.subtitle{
+ color:#aaa;
+ font-size:12px;
+ letter-spacing:2px;
+ margin-bottom:45px;
+}
+.menuButtons{
+ display:flex;
+ flex-direction:column;
+ gap:15px;
+}
+.menuButtons button{
+ width:100%;
+ padding:17px;
+ font-size:18px;
+ font-weight:bold;
+ background:#fff;
+ color:#000;
+ border:1px solid #fff;
+ border-radius:12px;
+}
+.menuButtons button:active{
+ background:#ccc;
+ transform:scale(.97);
+}
+.version{
+ color:#666;
+ font-size:11px;
+ margin-top:35px;
+}
+#addonsScreen{
+ display:none;
+}
+.addonsTitle{
+ font-size:25px;
+ letter-spacing:2px;
+ margin-bottom:30px;
+}
+.addon{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ padding:17px;
+ background:#151515;
+ border:1px solid #555;
+ border-radius:14px;
+ text-align:left;
+ margin-bottom:15px;
+}
+.addonName{
+ font-size:16px;
+ font-weight:bold;
+}
+.addonDescription{
+ font-size:11px;
+ color:#aaa;
+ margin-top:6px;
+ line-height:1.4;
+}
+.switch{
+ width:55px;
+ height:29px;
+ flex-shrink:0;
+ border-radius:30px;
+ background:#444;
+ position:relative;
+ border:1px solid #888;
+ transition:.2s;
+ cursor:pointer;
+}
+.switch:after{
+ content:"";
+ position:absolute;
+ width:21px;
+ height:21px;
+ left:3px;
+ top:3px;
+ background:white;
+ border-radius:50%;
+ transition:.2s;
+}
+.switch.active{
+ background:#fff;
+}
+.switch.active:after{
+ left:29px;
+ background:#000;
+}
+.backButton{
+ width:100%;
+ padding:15px;
+ background:white;
+ color:black;
+ border:1px solid white;
+}
+
+/* ИГРОВОЙ ИНТЕРФЕЙС */
+#gameUI{
+ display:none;
+ position:absolute;
+ inset:0;
+ z-index:4;
+ pointer-events:none;
+}
+#gameUI button{
+ pointer-events:auto;
+}
+.gameButtons{
+ position:absolute;
+ top:12px;
+ right:12px;
+ display:flex;
+ gap:8px;
+ z-index:3;
+}
+.gameButtons button{
+ padding:11px 15px;
+ font-size:15px;
+}
+#menuButton{
+ position:absolute;
+ top:12px;
+ left:12px;
+ z-index:3;
+ background:white;
+ color:black;
+ border:1px solid white;
+ padding:11px 15px;
+ font-size:14px;
+}
+
+/* ПОКАЗАТЕЛЬ РАСТЯЖЕНИЯ */
+#stretchInfo{
+ position:absolute;
+ top:65px;
+ left:50%;
+ transform:translateX(-50%);
+ background:#000b;
+ border:1px solid #5267c9;
+ border-radius:20px;
+ padding:9px 15px;
+ color:white;
+ font-size:13px;
+ font-weight:bold;
+ white-space:nowrap;
+ z-index:3;
+ pointer-events:none;
+}
+
+/* ЧЁРНЫЙ ОВАЛ */
+#bottomIsland{
+ position:absolute;
+ bottom:calc(17px + env(safe-area-inset-bottom));
+ left:50%;
+ transform:translateX(-50%);
+ width:151px;
+ height:49px;
+ border-radius:50px;
+ background:#000;
+ border:1px solid #292929;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:10px;
+ padding:5px 10px;
+ pointer-events:auto;
+ box-shadow:0 3px 15px #0008;
+ z-index:8;
+}
+.islandButton{
+ width:35px;
+ height:35px;
+ min-width:35px;
+ border-radius:50%;
+ border:1px solid #393939;
+ background:#171717;
+ color:white;
+ padding:0;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:19px;
+}
+.islandButton:active{
+ background:#444;
+ transform:scale(.92);
+}
+.islandButton.selected{
+ background:#303030;
+ border-color:#aaa;
+}
+
+/* ОКНА */
+.popup{
+ display:none;
+ position:absolute;
+ z-index:20;
+ left:50%;
+ top:50%;
+ transform:translate(-50%,-50%);
+ width:min(310px,86vw);
+ max-height:75vh;
+ overflow-y:auto;
+ background:#101114;
+ border:1px solid #454545;
+ border-radius:17px;
+ padding:17px;
+ box-shadow:0 10px 40px #000b;
+ pointer-events:auto;
+ touch-action:pan-y;
+}
+.popupHeader{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ margin-bottom:17px;
+}
+.popupTitle{
+ font-size:18px;
+ font-weight:bold;
+ letter-spacing:1px;
+}
+.closePopup{
+ width:34px;
+ height:34px;
+ border-radius:50%;
+ padding:0;
+ border:1px solid #555;
+ background:#242424;
+ color:white;
+ font-size:22px;
+ line-height:1;
+}
+.optionList{
+ display:flex;
+ flex-direction:column;
+ gap:9px;
+}
+.optionButton{
+ width:100%;
+ min-height:47px;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:10px;
+ text-align:left;
+ padding:11px 13px;
+ border-radius:10px;
+ border:1px solid #444;
+ background:#1c1d20;
+ color:white;
+ font-size:14px;
+}
+.optionButton.active{
+ border-color:white;
+ background:#34363a;
+}
+.optionButton .optionIcon{
+ font-size:20px;
+ width:28px;
+ text-align:center;
+}
+.optionButton .check{
+ margin-left:auto;
+ color:#fff;
+ font-size:17px;
+}
+.popupHint{
+ font-size:11px;
+ color:#888;
+ margin-top:13px;
+ line-height:1.4;
+ text-align:center;
+}
+#selectionInfo{
+ position:absolute;
+ bottom:83px;
+ left:50%;
+ transform:translateX(-50%);
+ background:#0009;
+ color:#ddd;
+ padding:6px 11px;
+ border-radius:20px;
+ font-size:11px;
+ white-space:nowrap;
+ pointer-events:none;
+}
+
+/* РЕДАКТОР МАТЕРИАЛА */
+.editorSection{
+ background:#1b1c20;
+ border:1px solid #383a40;
+ border-radius:12px;
+ padding:13px;
+ margin-bottom:12px;
+}
+.editorLabel{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ font-size:13px;
+ margin-bottom:10px;
+}
+.editorValue{
+ color:#aaa;
+}
+.editorSection input[type="range"]{
+ width:100%;
+ accent-color:white;
+}
+#customColor{
+ width:100%;
+ height:43px;
+ border:1px solid #555;
+ border-radius:9px;
+ background:#222;
+ padding:3px;
+}
+.editorReset{
+ width:100%;
+ background:white;
+ color:black;
+ border:1px solid white;
+ font-weight:bold;
+ margin-top:5px;
+}
+.editorApply{
+ width:100%;
+ background:#252b42;
+ border:1px solid #6477c9;
+ margin-top:9px;
+}
+
+@media(max-height:500px){
+ .popup{
+  max-height:65vh;
+ }
+ #bottomIsland{
+  bottom:8px;
+ }
+ #selectionInfo{
+  bottom:65px;
+ }
+ #stretchInfo{
+  top:55px;
+ }
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<!-- ГЛАВНОЕ МЕНЮ -->
+<div class="screen" id="mainMenu">
+ <div class="menuBox">
+  <div class="logo">ROPE PHYSICS</div>
+  <div class="subtitle">ФИЗИЧЕСКАЯ ВЕРЁВКА</div>
+
+  <div class="menuButtons">
+   <button id="playButton">▶ ИГРАТЬ</button>
+   <button id="addonsButton">ДОПОЛНЕНИЯ</button>
+  </div>
+
+  <div class="version">VERSION 1.4</div>
+ </div>
+</div>
+
+<!-- ДОПОЛНЕНИЯ -->
+<div class="screen" id="addonsScreen">
+ <div class="menuBox">
+  <div class="addonsTitle">ДОПОЛНЕНИЯ</div>
+
+  <div class="addon">
+   <div>
+    <div class="addonName">Жидкая верёвка</div>
+    <div class="addonDescription">
+     Более мягкая и гибкая верёвка
+    </div>
+   </div>
+   <div class="switch" id="liquidSwitch"></div>
+  </div>
+
+  <div class="addon">
+   <div>
+    <div class="addonName">Повреждение верёвки</div>
+    <div class="addonDescription">
+     При сильном растяжении верёвка постепенно повреждается
+    </div>
+   </div>
+   <div class="switch" id="damageSwitch"></div>
+  </div>
+
+  <div class="addon">
+   <div>
+    <div class="addonName">Тряска телефона</div>
+    <div class="addonDescription">
+     Наклоняй и встряхивай телефон, чтобы раскачивать верёвку
+    </div>
+   </div>
+   <div class="switch" id="motionSwitch"></div>
+  </div>
+
+  <button class="backButton" id="backButton">← НАЗАД</button>
+ </div>
+</div>
+
+<!-- ИГРА -->
+<div id="gameUI">
+ <button id="menuButton">⌂ В МЕНЮ</button>
+
+ <div class="gameButtons">
+  <button id="pause">Ⅱ</button>
+  <button id="reset">↻</button>
+ </div>
+
+ <div id="stretchInfo">Растяжение: 0%</div>
+
+ <div id="selectionInfo">Инструмент: рука</div>
+
+ <div id="bottomIsland">
+  <button class="islandButton" id="toolsButton">🔧</button>
+  <button class="islandButton" id="materialsButton">🧵</button>
+  <button class="islandButton" id="editorButton">⚙️</button>
+ </div>
+</div>
+
+<!-- ИНСТРУМЕНТЫ -->
+<div class="popup" id="toolsPopup">
+ <div class="popupHeader">
+  <div class="popupTitle">ИНСТРУМЕНТЫ</div>
+  <button class="closePopup" id="closeTools">×</button>
+ </div>
+
+ <div class="optionList">
+  <button class="optionButton active" data-tool="Рука">
+   <span class="optionIcon">✋</span>
+   <span>Рука</span>
+   <span class="check">✓</span>
+  </button>
+
+  <button class="optionButton" data-tool="Ножницы">
+   <span class="optionIcon">✂️</span>
+   <span>Ножницы</span>
+   <span class="check"></span>
+  </button>
+
+  <button class="optionButton" data-tool="Крючок">
+   <span class="optionIcon">🪝</span>
+   <span>Крючок</span>
+   <span class="check"></span>
+  </button>
+
+  <button class="optionButton" data-tool="Зажим">
+   <span class="optionIcon">🗜️</span>
+   <span>Зажим</span>
+   <span class="check"></span>
+  </button>
+
+  <button class="optionButton" data-tool="Ролик">
+   <span class="optionIcon">⚙️</span>
+   <span>Ролик</span>
+   <span class="check"></span>
+  </button>
+ </div>
+
+ <div class="popupHint">
+  Выбери инструмент и коснись верёвки.
+ </div>
+</div>
+
+<!-- МАТЕРИАЛЫ -->
+<div class="popup" id="materialsPopup">
+ <div class="popupHeader">
+  <div class="popupTitle">МАТЕРИАЛЫ</div>
+  <button class="closePopup" id="closeMaterials">×</button>
+ </div>
+
+ <div class="optionList">
+  <button class="optionButton active" data-material="normal">
+   <span class="optionIcon">〰️</span>
+   <span>Обычная верёвка</span>
+   <span class="check">✓</span>
+  </button>
+
+  <button class="optionButton" data-material="rubber">
+   <span class="optionIcon">🟢</span>
+   <span>Резина</span>
+   <span class="check"></span>
+  </button>
+
+  <button class="optionButton" data-material="rope">
+   <span class="optionIcon">🪢</span>
+   <span>Толстый канат</span>
+   <span class="check"></span>
+  </button>
+
+  <button class="optionButton" data-material="chain">
+   <span class="optionIcon">⛓️</span>
+   <span>Металлическая цепь</span>
+   <span class="check"></span>
+  </button>
+
+  <button class="optionButton" data-material="thread">
+   <span class="optionIcon">🧵</span>
+   <span>Тонкая нитка</span>
+   <span class="check"></span>
+  </button>
+
+  <button class="optionButton" data-material="liquid">
+   <span class="optionIcon">💧</span>
+   <span>Жидкая верёвка</span>
+   <span class="check"></span>
+  </button>
+
+  <button class="optionButton" data-material="sticky">
+   <span class="optionIcon">🟣</span>
+   <span>Липкая резина</span>
+   <span class="check"></span>
+  </button>
+ </div>
+
+ <div class="popupHint">
+  Материал меняет внешний вид и гибкость верёвки.
+ </div>
+</div>
+
+<!-- РЕДАКТОР МАТЕРИАЛА -->
+<div class="popup" id="editorPopup">
+ <div class="popupHeader">
+  <div class="popupTitle">РЕДАКТОР МАТЕРИАЛА</div>
+  <button class="closePopup" id="closeEditor">×</button>
+ </div>
+
+ <div class="editorSection">
+  <div class="editorLabel">
+   <span>Цвет верёвки</span>
+   <span class="editorValue" id="colorValue">#ffffff</span>
+  </div>
+  <input type="color" id="customColor" value="#ffffff">
+ </div>
+
+ <div class="editorSection">
+  <div class="editorLabel">
+   <span>Толщина</span>
+   <span class="editorValue" id="widthValue">4</span>
+  </div>
+  <input type="range" id="widthSlider" min="1" max="14" step="1" value="4">
+ </div>
+
+ <div class="editorSection">
+  <div class="editorLabel">
+   <span>Мягкость</span>
+   <span class="editorValue" id="softnessValue">0.50</span>
+  </div>
+  <input type="range" id="softnessSlider" min="0.05" max="1" step="0.05" value="0.5">
+ </div>
+
+ <button class="editorApply" id="applyEditor">✓ ПРИМЕНИТЬ</button>
+ <button class="editorReset" id="resetMaterial">↻ СБРОСИТЬ</button>
+
+ <div class="popupHint">
+  Настрой собственный материал верёвки.
+ </div>
+</div>
+
+<script>
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+
+let W,H,DPR;
+
+const POINTS=36;
+
+let rope=[];
+let gravity=1;
+let iterations=8;
+
+let paused=false;
+let dragging=false;
+let playing=false;
+let liquidMode=false;
+let damageMode=false;
+
+let pointer={x:0,y:0};
+let grabOffset={x:0,y:0};
+let anchor={x:0,y:0};
+
+let segmentLength=0;
+let activePointer=null;
+let draggedNode=-1;
+
+const GRAB_RADIUS=38;
+const BOTTOM_GRAB_RADIUS=17;
+
+let selectedTool="Рука";
+let selectedMaterial="normal";
+
+let brokenSegments=new Set();
+let pinnedNodes=new Map();
+let segmentDamage=new Array(POINTS-1).fill(0);
+
+let customMaterial={
+ color:"#ffffff",
+ glow:"#62caff",
+ width:4,
+ softness:.5,
+ friction:.995
+};
+
+const materials={
+ normal:{
+  color:"#ffffff",
+  glow:"#62caff",
+  width:4,
+  softness:.5,
+  friction:.995
+ },
+ rubber:{
+  color:"#42e65a",
+  glow:"#42ff70",
+  width:5,
+  softness:.32,
+  friction:.99
+ },
+ rope:{
+  color:"#c99b60",
+  glow:"#e8bd7e",
+  width:8,
+  softness:.5,
+  friction:.985
+ },
+ chain:{
+  color:"#c5cbd5",
+  glow:"#aabbdc",
+  width:5,
+  softness:.65,
+  friction:.98
+ },
+ thread:{
+  color:"#f1e8ff",
+  glow:"#d4baff",
+  width:2,
+  softness:.4,
+  friction:.995
+ },
+ liquid:{
+  color:"#76eaff",
+  glow:"#39cfff",
+  width:6,
+  softness:.22,
+  friction:.995
+ },
+ sticky:{
+  color:"#cf70ff",
+  glow:"#d34bff",
+  width:6,
+  softness:.25,
+  friction:.99
+ }
+};
+
+/* ==================================
+   УПРАВЛЕНИЕ ДАТЧИКАМИ ТЕЛЕФОНА
+================================== */
+
+let phoneMotionEnabled=false;
+let phoneTiltForce=0;
+let phoneShakeX=0;
+let phoneShakeY=0;
+
+let orientationReceived=false;
+let motionReceived=false;
+let motionCheckTimer=null;
+
+let previousMotion={
+ x:null,
+ y:null,
+ z:null
+};
+
+function clamp(value,min,max){
+ return Math.max(min,Math.min(max,value));
+}
+
+/* НАКЛОН ТЕЛЕФОНА */
+function handleDeviceOrientation(event){
+ if(!phoneMotionEnabled)return;
+
+ if(event.gamma===null || event.gamma===undefined)return;
+
+ orientationReceived=true;
+
+ let tilt=clamp(event.gamma/35,-1,1);
+
+ phoneTiltForce=tilt*.24;
+}
+
+/* ВСТРЯХИВАНИЕ ТЕЛЕФОНА */
+function handleDeviceMotion(event){
+ if(!phoneMotionEnabled)return;
+
+ let acceleration=event.acceleration;
+
+ let x=0;
+ let y=0;
+ let z=0;
+
+ if(acceleration &&
+    acceleration.x!==null &&
+    acceleration.y!==null){
+
+  x=acceleration.x||0;
+  y=acceleration.y||0;
+  z=acceleration.z||0;
+
+ }else if(event.accelerationIncludingGravity){
+
+  let gravityData=event.accelerationIncludingGravity;
+
+  x=gravityData.x||0;
+  y=gravityData.y||0;
+  z=gravityData.z||0;
+
+  if(previousMotion.x!==null){
+   let dx=x-previousMotion.x;
+   let dy=y-previousMotion.y;
+   let dz=z-previousMotion.z;
+
+   x=dx;
+   y=dy;
+   z=dz;
+  }
+ }
+
+ previousMotion.x=event.accelerationIncludingGravity?.x ??
+                  acceleration?.x ?? null;
+
+ previousMotion.y=event.accelerationIncludingGravity?.y ??
+                  acceleration?.y ?? null;
+
+ previousMotion.z=event.accelerationIncludingGravity?.z ??
+                  acceleration?.z ?? null;
+
+ motionReceived=true;
+
+ let strength=Math.hypot(x,y,z);
+
+ if(strength>2.2){
+  phoneShakeX+=clamp(x*.018,-.45,.45);
+  phoneShakeY+=clamp(y*.018,-.45,.45);
+
+  phoneShakeX=clamp(phoneShakeX,-.8,.8);
+  phoneShakeY=clamp(phoneShakeY,-.8,.8);
+ }
+}
+
+/* ОТКЛЮЧЕНИЕ ДАТЧИКОВ */
+function removePhoneMotion(){
+ phoneMotionEnabled=false;
+
+ if(motionCheckTimer){
+  clearTimeout(motionCheckTimer);
+  motionCheckTimer=null;
+ }
+
+ window.removeEventListener(
+  "deviceorientation",
+  handleDeviceOrientation
+ );
+
+ window.removeEventListener(
+  "devicemotion",
+  handleDeviceMotion
+ );
+
+ phoneTiltForce=0;
+ phoneShakeX=0;
+ phoneShakeY=0;
+
+ previousMotion={
+  x:null,
+  y:null,
+  z:null
+ };
+
+ document.getElementById("motionSwitch")
+  .classList.remove("active");
+}
+
+/* ВКЛЮЧЕНИЕ ДАТЧИКОВ */
+async function enablePhoneMotion(){
+
+ if(!("DeviceOrientationEvent" in window) &&
+    !("DeviceMotionEvent" in window)){
+
+  alert("Этот браузер не поддерживает датчики телефона.");
+  return false;
+ }
+
+ try{
+
+  /*
+   * На некоторых устройствах, например iPhone,
+   * браузер требует отдельное разрешение.
+   *
+   * В Chrome на Android такого метода обычно нет.
+   * Поэтому отсутствие метода не считается ошибкой.
+   */
+
+  if(typeof DeviceOrientationEvent!=="undefined" &&
+     typeof DeviceOrientationEvent.requestPermission==="function"){
+
+   const result=await DeviceOrientationEvent.requestPermission();
+
+   if(result!=="granted"){
+    alert("Chrome не разрешил доступ к датчику наклона.");
+    return false;
+   }
+  }
+
+  if(typeof DeviceMotionEvent!=="undefined" &&
+     typeof DeviceMotionEvent.requestPermission==="function"){
+
+   const result=await DeviceMotionEvent.requestPermission();
+
+   if(result!=="granted"){
+    alert("Chrome не разрешил доступ к датчику движения.");
+    return false;
+   }
+  }
+
+  orientationReceived=false;
+  motionReceived=false;
+
+  previousMotion={
+   x:null,
+   y:null,
+   z:null
+  };
+
+  phoneMotionEnabled=true;
+
+  window.addEventListener(
+   "deviceorientation",
+   handleDeviceOrientation,
+   true
+  );
+
+  window.addEventListener(
+   "devicemotion",
+   handleDeviceMotion,
+   true
+  );
+
+  document.getElementById("motionSwitch")
+   .classList.add("active");
+
+  /*
+   * Проверяем, приходят ли данные от телефона.
+   * Если событий нет, сообщаем о блокировке.
+   */
+
+  motionCheckTimer=setTimeout(()=>{
+
+   motionCheckTimer=null;
+
+   if(!phoneMotionEnabled)return;
+
+   if(!orientationReceived && !motionReceived){
+
+    removePhoneMotion();
+
+    if(!window.isSecureContext){
+     alert(
+      "Chrome не передаёт данные датчиков для этого файла.\n\n"+
+      "Для работы датчиков может понадобиться HTTPS."
+     );
+    }else{
+     alert(
+      "Датчики не передают данные.\n\n"+
+      "Проверь разрешения Chrome для движения и ориентации устройства."
+     );
+    }
+
+   }else{
+
+    motionAvailable=true;
+
+   }
+
+  },3500);
+
+  return true;
+
+ }catch(error){
+
+  removePhoneMotion();
+
+  alert(
+   "Не удалось включить датчики.\n\n"+
+   "Возможно, Chrome заблокировал доступ к ним."
+  );
+
+  return false;
+ }
+}
+
+/* ПЕРЕКЛЮЧАТЕЛЬ В ДОПОЛНЕНИЯХ */
+document.getElementById("motionSwitch").onclick=async()=>{
+
+ if(phoneMotionEnabled){
+  removePhoneMotion();
+ }else{
+  await enablePhoneMotion();
+ }
+
+};
+
+/* ТЕКУЩИЙ МАТЕРИАЛ */
+function getMaterial(){
+ if(selectedMaterial==="custom")return customMaterial;
+ return materials[selectedMaterial];
+}
+
+/* ОСТАНОВКА ПЕРЕТАСКИВАНИЯ */
+function stopDragging(){
+ dragging=false;
+ activePointer=null;
+ draggedNode=-1;
+}
+
+/* ИЗМЕНЕНИЕ РАЗМЕРА */
+function resize(){
+ W=innerWidth;
+ H=innerHeight;
+
+ DPR=Math.min(devicePixelRatio||1,2);
+
+ canvas.width=W*DPR;
+ canvas.height=H*DPR;
+
+ ctx.setTransform(DPR,0,0,DPR,0,0);
+
+ anchor.x=W/2;
+ anchor.y=H*.20;
+
+ createRope();
+}
+
+/* СОЗДАНИЕ ВЕРЁВКИ */
+function createRope(){
+ stopDragging();
+
+ brokenSegments.clear();
+ pinnedNodes.clear();
+
+ segmentLength=H*.32/(POINTS-1);
+
+ segmentDamage=new Array(POINTS-1).fill(0);
+
+ rope=[];
+
+ for(let i=0;i<POINTS;i++){
+  let y=anchor.y+segmentLength*i;
+
+  rope.push({
+   x:anchor.x,
+   y:y,
+   oldX:anchor.x,
+   oldY:y
+  });
+ }
+}
+
+/* ЗАКРЕПЛЁННЫЕ ТОЧКИ */
+function isFixed(index){
+ return index===0 ||
+        pinnedNodes.has(index) ||
+        (dragging && index===draggedNode);
+}
+
+function applyFixedPoints(){
+ rope[0].x=anchor.x;
+ rope[0].y=anchor.y;
+
+ for(const [index,pin] of pinnedNodes){
+  if(!rope[index])continue;
+
+  rope[index].x=pin.x;
+  rope[index].y=pin.y;
+  rope[index].oldX=pin.x;
+  rope[index].oldY=pin.y;
+ }
+
+ if(dragging && rope[draggedNode]){
+  let p=rope[draggedNode];
+
+  p.x=pointer.x+grabOffset.x;
+  p.y=pointer.y+grabOffset.y;
+ }
+}
+
+/* ПОВРЕЖДЕНИЕ ВЕРЁВКИ */
+function updateDamage(){
+ if(!damageMode)return;
+
+ for(let i=0;i<POINTS-1;i++){
+  if(brokenSegments.has(i))continue;
+
+  let a=rope[i];
+  let b=rope[i+1];
+
+  let distance=Math.hypot(b.x-a.x,b.y-a.y);
+
+  if(distance>segmentLength*1.65){
+   segmentDamage[i]+=1.2;
+  }else{
+   segmentDamage[i]=Math.max(0,segmentDamage[i]-.25);
+  }
+
+  if(segmentDamage[i]>=42){
+   brokenSegments.add(i);
+   segmentDamage[i]=0;
+  }
+ }
+}
+
+/* РАСТЯЖЕНИЕ */
+function updateStretchInfo(){
+ let totalLength=0;
+ let intactLength=0;
+
+ for(let i=0;i<POINTS-1;i++){
+  if(brokenSegments.has(i))continue;
+
+  let a=rope[i];
+  let b=rope[i+1];
+
+  let distance=Math.hypot(b.x-a.x,b.y-a.y);
+
+  totalLength+=distance;
+  intactLength+=segmentLength;
+ }
+
+ let percentage=0;
+
+ if(intactLength>0){
+  percentage=Math.max(
+   0,
+   Math.round((totalLength/intactLength-1)*100)
+  );
+ }
+
+ document.getElementById("stretchInfo").textContent=
+  "Растяжение: "+percentage+"%";
+}
+
+/* ФИЗИКА */
+function updatePhysics(){
+ const material=getMaterial();
+
+ for(let i=1;i<POINTS;i++){
+  let p=rope[i];
+
+  if(isFixed(i))continue;
+
+  let vx=(p.x-p.oldX)*material.friction;
+  let vy=(p.y-p.oldY)*material.friction;
+
+  p.oldX=p.x;
+  p.oldY=p.y;
+
+  /* ВЛИЯНИЕ НАКЛОНА И ТРЯСКИ ТЕЛЕФОНА */
+  let sensorX=phoneMotionEnabled?
+   phoneTiltForce+phoneShakeX:0;
+
+  let sensorY=phoneMotionEnabled?
+   phoneShakeY:0;
+
+  p.x+=vx+sensorX;
+  p.y+=vy+gravity*.32+sensorY;
+ }
+
+ applyFixedPoints();
+
+ for(let k=0;k<iterations;k++){
+  for(let i=0;i<POINTS-1;i++){
+   if(brokenSegments.has(i))continue;
+
+   let a=rope[i];
+   let b=rope[i+1];
+
+   let dx=b.x-a.x;
+   let dy=b.y-a.y;
+
+   let distance=Math.sqrt(dx*dx+dy*dy);
+
+   if(distance===0)continue;
+
+   let difference=(distance-segmentLength)/distance;
+
+   let softness=liquidMode?.28:material.softness;
+
+   let fixedA=isFixed(i);
+   let fixedB=isFixed(i+1);
+
+   if(fixedA && fixedB)continue;
+
+   if(fixedA){
+    b.x-=dx*difference;
+    b.y-=dy*difference;
+   }
+   else if(fixedB){
+    a.x+=dx*difference;
+    a.y+=dy*difference;
+   }
+   else{
+    let cx=dx*difference*softness*.5;
+    let cy=dy*difference*softness*.5;
+
+    a.x+=cx;
+    a.y+=cy;
+
+    b.x-=cx;
+    b.y-=cy;
+   }
+  }
+
+  applyFixedPoints();
+ }
+
+ updateDamage();
+ updateStretchInfo();
+}
+
+/* РИСОВАНИЕ */
+function draw(){
+ ctx.clearRect(0,0,W,H);
+
+ let gradient=ctx.createLinearGradient(0,0,0,H);
+
+ gradient.addColorStop(0,"#080d35");
+ gradient.addColorStop(1,"#10184b");
+
+ ctx.fillStyle=gradient;
+ ctx.fillRect(0,0,W,H);
+
+ const material=getMaterial();
+
+ ctx.lineCap="round";
+ ctx.lineJoin="round";
+ ctx.strokeStyle=material.color;
+ ctx.lineWidth=material.width;
+ ctx.shadowBlur=selectedMaterial==="normal"?13:16;
+ ctx.shadowColor=material.glow;
+
+ ctx.beginPath();
+
+ let pathStarted=false;
+
+ for(let i=0;i<POINTS;i++){
+  let p=rope[i];
+
+  if(i===0){
+   ctx.moveTo(p.x,p.y);
+   pathStarted=true;
+   continue;
+  }
+
+  if(brokenSegments.has(i-1)){
+   ctx.stroke();
+   ctx.beginPath();
+   ctx.moveTo(p.x,p.y);
+   pathStarted=true;
+  }else{
+   if(!pathStarted){
+    ctx.moveTo(p.x,p.y);
+    pathStarted=true;
+   }else{
+    ctx.lineTo(p.x,p.y);
+   }
+  }
+ }
+
+ ctx.stroke();
+ ctx.shadowBlur=0;
+
+ /* ВЕРХНЕЕ КРЕПЛЕНИЕ */
+ ctx.beginPath();
+ ctx.arc(anchor.x,anchor.y,6,0,Math.PI*2);
+ ctx.fillStyle=material.color;
+ ctx.shadowBlur=20;
+ ctx.shadowColor=material.glow;
+ ctx.fill();
+ ctx.shadowBlur=0;
+
+ ctx.beginPath();
+ ctx.arc(anchor.x,anchor.y,2,0,Math.PI*2);
+ ctx.fillStyle="#ffffff";
+ ctx.fill();
+
+ /* НИЖНИЙ ШАРИК */
+ let end=rope[POINTS-1];
+
+ ctx.beginPath();
+ ctx.arc(end.x,end.y,7,0,Math.PI*2);
+ ctx.fillStyle=material.color;
+ ctx.shadowBlur=20;
+ ctx.shadowColor=material.glow;
+ ctx.fill();
+ ctx.shadowBlur=0;
+
+ /* ЗАЖИМЫ И РОЛИКИ */
+ for(const [index,pin] of pinnedNodes){
+  let p=rope[index];
+  if(!p)continue;
+
+  if(pin.type==="Зажим"){
+   ctx.save();
+   ctx.translate(p.x,p.y);
+   ctx.rotate(Math.PI/4);
+
+   ctx.fillStyle="#ffb52e";
+   ctx.strokeStyle="#fff0b5";
+   ctx.lineWidth=2;
+
+   ctx.fillRect(-8,-8,16,16);
+   ctx.strokeRect(-8,-8,16,16);
+
+   ctx.restore();
+  }
+
+  if(pin.type==="Ролик"){
+   ctx.beginPath();
+   ctx.arc(p.x,p.y,13,0,Math.PI*2);
+
+   ctx.fillStyle="#252b38";
+   ctx.fill();
+
+   ctx.lineWidth=3;
+   ctx.strokeStyle="#d9e4ff";
+   ctx.stroke();
+
+   ctx.beginPath();
+   ctx.arc(p.x,p.y,4,0,Math.PI*2);
+   ctx.fillStyle="#ffffff";
+   ctx.fill();
+
+   ctx.beginPath();
+   ctx.moveTo(p.x-9,p.y);
+   ctx.lineTo(p.x+9,p.y);
+   ctx.moveTo(p.x,p.y-9);
+   ctx.lineTo(p.x,p.y+9);
+   ctx.strokeStyle="#aabbdc";
+   ctx.lineWidth=1.5;
+   ctx.stroke();
+  }
+ }
+
+ /* КРЮЧОК */
+ if(dragging && selectedTool==="Крючок"){
+  let p=rope[draggedNode];
+
+  if(p){
+   ctx.beginPath();
+   ctx.arc(p.x,p.y,13,0,Math.PI*2);
+   ctx.strokeStyle="#ffe18a";
+   ctx.lineWidth=3;
+   ctx.stroke();
+  }
+ }
+}
+
+/* АНИМАЦИЯ */
+function animate(){
+ requestAnimationFrame(animate);
+
+ if(!playing)return;
+
+ if(!paused){
+  updatePhysics();
+
+  /* ЗАТУХАНИЕ ТОЛЧКОВ ОТ ТРЯСКИ */
+  phoneShakeX*=.88;
+  phoneShakeY*=.88;
+ }
+
+ draw();
+}
+
+/* КООРДИНАТЫ */
+function getPointer(e){
+ let r=canvas.getBoundingClientRect();
+
+ return {
+  x:e.clientX-r.left,
+  y:e.clientY-r.top
+ };
+}
+
+/* ПОИСК БЛИЖАЙШЕЙ ТОЧКИ */
+function nearestNode(pos){
+ let best=-1;
+ let bestDistance=Infinity;
+
+ for(let i=1;i<POINTS;i++){
+  let p=rope[i];
+
+  let distance=Math.hypot(p.x-pos.x,p.y-pos.y);
+
+  if(distance<bestDistance){
+   bestDistance=distance;
+   best=i;
+  }
+ }
+
+ if(bestDistance>GRAB_RADIUS)return -1;
+
+ return best;
+}
+
+/* ПОИСК НИЖНЕГО ШАРИКА */
+function nearestBottomNode(pos){
+ let index=POINTS-1;
+ let p=rope[index];
+
+ if(!p)return -1;
+
+ let distance=Math.hypot(p.x-pos.x,p.y-pos.y);
+
+ if(distance>BOTTOM_GRAB_RADIUS)return -1;
+
+ return index;
+}
+
+/* ПОИСК БЛИЖАЙШЕГО ОТРЕЗКА */
+function nearestSegment(pos){
+ let best=-1;
+ let bestDistance=Infinity;
+
+ for(let i=0;i<POINTS-1;i++){
+  if(brokenSegments.has(i))continue;
+
+  let a=rope[i];
+  let b=rope[i+1];
+
+  let dx=b.x-a.x;
+  let dy=b.y-a.y;
+
+  let lengthSquared=dx*dx+dy*dy;
+
+  if(lengthSquared===0)continue;
+
+  let t=((pos.x-a.x)*dx+(pos.y-a.y)*dy)/lengthSquared;
+  t=Math.max(0,Math.min(1,t));
+
+  let px=a.x+t*dx;
+  let py=a.y+t*dy;
+
+  let distance=Math.hypot(pos.x-px,pos.y-py);
+
+  if(distance<bestDistance){
+   bestDistance=distance;
+   best=i;
+  }
+ }
+
+ if(bestDistance>GRAB_RADIUS)return -1;
+
+ return best;
+}
+
+/* НОЖНИЦЫ */
+function cutRope(pos){
+ let index=nearestSegment(pos);
+
+ if(index<0)return;
+
+ brokenSegments.add(index);
+ segmentDamage[index]=0;
+
+ let a=rope[index];
+ let b=rope[index+1];
+
+ let dx=b.x-a.x;
+ let dy=b.y-a.y;
+
+ let length=Math.hypot(dx,dy)||1;
+
+ let nx=dx/length;
+ let ny=dy/length;
+
+ a.x-=nx*2;
+ a.y-=ny*2;
+
+ b.x+=nx*2;
+ b.y+=ny*2;
+
+ draw();
+}
+
+/* ЗАЖИМ И РОЛИК */
+function togglePin(pos,type){
+ let index=nearestNode(pos);
+
+ if(index<0)return;
+
+ if(pinnedNodes.has(index)){
+  let existing=pinnedNodes.get(index);
+
+  if(existing.type===type){
+   pinnedNodes.delete(index);
+  }else{
+   pinnedNodes.set(index,{
+    type:type,
+    x:rope[index].x,
+    y:rope[index].y
+   });
+  }
+ }else{
+  pinnedNodes.set(index,{
+   type:type,
+   x:rope[index].x,
+   y:rope[index].y
+  });
+ }
+
+ draw();
+}
+
+/* НАЧАЛО ВЗАИМОДЕЙСТВИЯ */
+canvas.addEventListener("pointerdown",e=>{
+ if(!playing||paused)return;
+
+ let pos=getPointer(e);
+ pointer=pos;
+
+ if(selectedTool==="Ножницы"){
+  stopDragging();
+  cutRope(pos);
+  e.preventDefault();
+  return;
+ }
+
+ if(selectedTool==="Зажим"){
+  stopDragging();
+  togglePin(pos,"Зажим");
+  e.preventDefault();
+  return;
+ }
+
+ if(selectedTool==="Ролик"){
+  stopDragging();
+  togglePin(pos,"Ролик");
+  e.preventDefault();
+  return;
+ }
+
+ let index=-1;
+
+ if(selectedTool==="Рука"){
+  index=nearestBottomNode(pos);
+ }
+
+ if(selectedTool==="Крючок"){
+  index=nearestNode(pos);
+ }
+
+ if(index<0)return;
+ if(pinnedNodes.has(index))return;
+
+ stopDragging();
+
+ draggedNode=index;
+ dragging=true;
+ activePointer=e.pointerId;
+
+ let p=rope[index];
+
+ grabOffset.x=p.x-pos.x;
+ grabOffset.y=p.y-pos.y;
+
+ try{
+  canvas.setPointerCapture(e.pointerId);
+ }catch(error){}
+
+ e.preventDefault();
+});
+
+/* ПЕРЕМЕЩЕНИЕ */
+canvas.addEventListener("pointermove",e=>{
+ if(!dragging)return;
+ if(e.pointerId!==activePointer)return;
+
+ pointer=getPointer(e);
+
+ let p=rope[draggedNode];
+
+ if(p){
+  p.x=pointer.x+grabOffset.x;
+  p.y=pointer.y+grabOffset.y;
+
+  p.oldX=p.x;
+  p.oldY=p.y;
+ }
+
+ e.preventDefault();
+});
+
+/* ОТПУСКАНИЕ */
+function releasePointer(e){
+ if(!dragging)return;
+ if(e.pointerId!==activePointer)return;
+
+ stopDragging();
+}
+
+canvas.addEventListener("pointerup",releasePointer);
+canvas.addEventListener("pointercancel",releasePointer);
+canvas.addEventListener("lostpointercapture",releasePointer);
+
+/* ЭЛЕМЕНТЫ МЕНЮ */
+const mainMenu=document.getElementById("mainMenu");
+const addonsScreen=document.getElementById("addonsScreen");
+const gameUI=document.getElementById("gameUI");
+
+const toolsPopup=document.getElementById("toolsPopup");
+const materialsPopup=document.getElementById("materialsPopup");
+const editorPopup=document.getElementById("editorPopup");
+
+/* ЗАКРЫТИЕ ОКОН */
+function closePopups(){
+ toolsPopup.style.display="none";
+ materialsPopup.style.display="none";
+ editorPopup.style.display="none";
+
+ document.getElementById("toolsButton").classList.remove("selected");
+ document.getElementById("materialsButton").classList.remove("selected");
+ document.getElementById("editorButton").classList.remove("selected");
+}
+
+function openPopup(which){
+ closePopups();
+
+ if(which==="tools"){
+  toolsPopup.style.display="block";
+  document.getElementById("toolsButton").classList.add("selected");
+ }
+
+ if(which==="materials"){
+  materialsPopup.style.display="block";
+  document.getElementById("materialsButton").classList.add("selected");
+ }
+
+ if(which==="editor"){
+  editorPopup.style.display="block";
+  document.getElementById("editorButton").classList.add("selected");
+  updateEditorValues();
+ }
+}
+
+/* ПОЛНЫЙ ЭКРАН */
+function enterFullscreen(){
+ const el=document.documentElement;
+
+ if(!document.fullscreenElement&&el.requestFullscreen){
+  el.requestFullscreen().then(()=>{
+   if(screen.orientation&&screen.orientation.lock){
+    screen.orientation.lock("portrait").catch(()=>{});
+   }
+  }).catch(()=>{});
+ }
+}
+
+function exitFullscreen(){
+ if(document.fullscreenElement&&document.exitFullscreen){
+  document.exitFullscreen().catch(()=>{});
+ }
+
+ try{
+  if(screen.orientation&&screen.orientation.unlock){
+   screen.orientation.unlock();
+  }
+ }catch(e){}
+}
+
+/* ЗАПУСК */
+document.getElementById("playButton").onclick=()=>{
+ enterFullscreen();
+
+ mainMenu.style.display="none";
+ addonsScreen.style.display="none";
+ gameUI.style.display="block";
+
+ closePopups();
+
+ playing=true;
+ paused=false;
+
+ document.getElementById("pause").textContent="Ⅱ";
+
+ createRope();
+ draw();
+};
+
+/* ДОПОЛНЕНИЯ */
+document.getElementById("addonsButton").onclick=()=>{
+ mainMenu.style.display="none";
+ addonsScreen.style.display="flex";
+};
+
+document.getElementById("backButton").onclick=()=>{
+ addonsScreen.style.display="none";
+ mainMenu.style.display="flex";
+};
+
+/* ЖИДКАЯ ВЕРЁВКА */
+const liquidSwitch=document.getElementById("liquidSwitch");
+
+liquidSwitch.onclick=()=>{
+ liquidMode=!liquidMode;
+ liquidSwitch.classList.toggle("active",liquidMode);
+};
+
+/* ПОВРЕЖДЕНИЕ */
+const damageSwitch=document.getElementById("damageSwitch");
+
+damageSwitch.onclick=()=>{
+ damageMode=!damageMode;
+ damageSwitch.classList.toggle("active",damageMode);
+
+ if(!damageMode){
+  segmentDamage.fill(0);
+ }
+};
+
+/* ПАУЗА */
+document.getElementById("pause").onclick=()=>{
+ if(!playing)return;
+
+ paused=!paused;
+
+ if(paused){
+  stopDragging();
+ }
+
+ document.getElementById("pause").textContent=
+ paused?"▶":"Ⅱ";
+};
+
+/* СБРОС ВЕРЁВКИ */
+document.getElementById("reset").onclick=()=>{
+ if(!playing)return;
+
+ createRope();
+ draw();
+};
+
+/* В МЕНЮ */
+document.getElementById("menuButton").onclick=()=>{
+ playing=false;
+ paused=false;
+
+ stopDragging();
+ closePopups();
+
+ gameUI.style.display="none";
+ mainMenu.style.display="flex";
+
+ exitFullscreen();
+};
+
+/* ОТКРЫТИЕ ИНСТРУМЕНТОВ */
+document.getElementById("toolsButton").onclick=()=>{
+ if(toolsPopup.style.display==="block"){
+  closePopups();
+ }else{
+  openPopup("tools");
+ }
+};
+
+/* ОТКРЫТИЕ МАТЕРИАЛОВ */
+document.getElementById("materialsButton").onclick=()=>{
+ if(materialsPopup.style.display==="block"){
+  closePopups();
+ }else{
+  openPopup("materials");
+ }
+};
+
+/* РЕДАКТОР */
+document.getElementById("editorButton").onclick=()=>{
+ if(editorPopup.style.display==="block"){
+  closePopups();
+ }else{
+  openPopup("editor");
+ }
+};
+
+document.getElementById("closeTools").onclick=closePopups;
+document.getElementById("closeMaterials").onclick=closePopups;
+document.getElementById("closeEditor").onclick=closePopups;
+
+/* ВЫБОР ИНСТРУМЕНТА */
+document.querySelectorAll("[data-tool]").forEach(button=>{
+ button.onclick=()=>{
+  stopDragging();
+
+  selectedTool=button.dataset.tool;
+
+  document.querySelectorAll("[data-tool]").forEach(item=>{
+   item.classList.remove("active");
+   item.querySelector(".check").textContent="";
+  });
+
+  button.classList.add("active");
+  button.querySelector(".check").textContent="✓";
+
+  document.getElementById("selectionInfo").textContent=
+   "Инструмент: "+selectedTool.toLowerCase();
+
+  closePopups();
+  draw();
+ };
+});
+
+/* ВЫБОР МАТЕРИАЛА */
+document.querySelectorAll("[data-material]").forEach(button=>{
+ button.onclick=()=>{
+  selectedMaterial=button.dataset.material;
+
+  document.querySelectorAll("[data-material]").forEach(item=>{
+   item.classList.remove("active");
+   item.querySelector(".check").textContent="";
+  });
+
+  button.classList.add("active");
+  button.querySelector(".check").textContent="✓";
+
+  draw();
+  closePopups();
+ };
+});
+
+/* ПОЛЯ РЕДАКТОРА */
+const customColor=document.getElementById("customColor");
+const widthSlider=document.getElementById("widthSlider");
+const softnessSlider=document.getElementById("softnessSlider");
+
+function updateEditorValues(){
+ let material=getMaterial();
+
+ customColor.value=material.color;
+ widthSlider.value=material.width;
+ softnessSlider.value=material.softness;
+
+ document.getElementById("colorValue").textContent=material.color;
+ document.getElementById("widthValue").textContent=material.width;
+ document.getElementById("softnessValue").textContent=
+  Number(material.softness).toFixed(2);
+}
+
+customColor.oninput=()=>{
+ document.getElementById("colorValue").textContent=
+  customColor.value;
+};
+
+widthSlider.oninput=()=>{
+ document.getElementById("widthValue").textContent=
+  widthSlider.value;
+};
+
+softnessSlider.oninput=()=>{
+ document.getElementById("softnessValue").textContent=
+  Number(softnessSlider.value).toFixed(2);
+};
+
+/* ПРИМЕНЕНИЕ РЕДАКТОРА */
+document.getElementById("applyEditor").onclick=()=>{
+ customMaterial.color=customColor.value;
+ customMaterial.glow=customColor.value;
+ customMaterial.width=Number(widthSlider.value);
+ customMaterial.softness=Number(softnessSlider.value);
+ customMaterial.friction=.995;
+
+ selectedMaterial="custom";
+
+ document.querySelectorAll("[data-material]").forEach(item=>{
+  item.classList.remove("active");
+  item.querySelector(".check").textContent="";
+ });
+
+ draw();
+ closePopups();
+};
+
+/* СБРОС ОБЫЧНОГО МАТЕРИАЛА */
+document.getElementById("resetMaterial").onclick=()=>{
+ selectedMaterial="normal";
+
+ customMaterial={
+  color:"#ffffff",
+  glow:"#62caff",
+  width:4,
+  softness:.5,
+  friction:.995
+ };
+
+ document.querySelectorAll("[data-material]").forEach(item=>{
+  item.classList.remove("active");
+  item.querySelector(".check").textContent="";
+ });
+
+ const normalButton=document.querySelector('[data-material="normal"]');
+
+ normalButton.classList.add("active");
+ normalButton.querySelector(".check").textContent="✓";
+
+ updateEditorValues();
+ draw();
+};
+
+/* ТРЕТЬЯ КНОПКА — РЕДАКТОР */
+document.getElementById("thirdButton")?.addEventListener("click",()=>{});
+
+/* ИЗМЕНЕНИЕ РАЗМЕРА */
+addEventListener("resize",()=>{
+ resize();
+ if(playing)draw();
+});
+
+resize();
+animate();
+</script>
+
+</body>
+</html>
